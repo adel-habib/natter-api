@@ -1,10 +1,8 @@
 package me.ahabib;
 
 import com.google.common.util.concurrent.RateLimiter;
-import me.ahabib.controller.AuditController;
-import me.ahabib.controller.ModeratorController;
-import me.ahabib.controller.SpaceController;
-import me.ahabib.controller.UserController;
+import me.ahabib.controller.*;
+import me.ahabib.token.TokenStore;
 import org.dalesbred.Database;
 import org.dalesbred.result.EmptyResultException;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -36,6 +34,8 @@ public class Main {
         var spaceController = new SpaceController(database);
         var userController = new UserController(database);
         var auditController = new AuditController(database);
+        TokenStore tokenStore = null;
+        var tokenController = new TokenController(tokenStore);
 
         var rateLimiter = RateLimiter.create(2.0d);
 
@@ -71,7 +71,8 @@ public class Main {
 
         before(auditController::auditRequestStart);
         afterAfter(auditController::auditRequestEnd);
-
+        before("/sessions", userController::requireAuthentication);
+        post("/sessions", tokenController::login);
         before("/spaces", userController::requireAuthentication);
         post("/spaces", spaceController::createSpace);
 
