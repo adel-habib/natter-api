@@ -5,9 +5,12 @@ import org.json.JSONObject;
 import spark.Request;
 import spark.Response;
 
+import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 import static java.time.Instant.now;
+import static spark.Spark.halt;
+
 public class TokenController {
     private final TokenStore tokenStore;
 
@@ -25,19 +28,28 @@ public class TokenController {
     }
 
     public void validateToken(Request request, Response response) {
-        var tokenId = request.headers("X-CSRF-Token");
-        if (tokenId == null) return;
+        var tokenId = request.headers("Authorization");
+        if (tokenId == null || !tokenId.startsWith("Bearer ")) {
+            return;
+        }
+        tokenId = tokenId.substring(7);
+
         tokenStore.read(request, tokenId).ifPresent(token -> {
-            if (now().isBefore(token.expiry)) {
+            if (Instant.now().isBefore(token.expiry)) {
                 request.attribute("subject", token.username);
                 token.attributes.forEach(request::attribute);
+            } else {
+                response.header("WWW-Authenticate", "Bearer error=\"invalid_token\"," + "error_description=\"Expired\"");
+                halt(401);
             }
         });
     }
     public JSONObject logout(Request request, Response response) {
-        var tokenId = request.headers("X-CSRF-Token");
-        if (tokenId == null)
+        var tokenId = request.headers("Authorization");
+        if (tokenId == null || !tokenId.startsWith("Bearer ")) {
             throw new IllegalArgumentException("missing token header");
+        }
+        tokenId = tokenId.substring(7);
         tokenStore.revoke(request, tokenId);
         response.status(200);
         return new JSONObject();

@@ -3,6 +3,7 @@ package me.ahabib;
 import com.google.common.util.concurrent.RateLimiter;
 import me.ahabib.controller.*;
 import me.ahabib.token.CookieTokenStore;
+import me.ahabib.token.DatabaseTokenStore;
 import me.ahabib.token.TokenStore;
 import org.dalesbred.Database;
 import org.dalesbred.result.EmptyResultException;
@@ -35,8 +36,10 @@ public class Main {
         var spaceController = new SpaceController(database);
         var userController = new UserController(database);
         var auditController = new AuditController(database);
-        TokenStore tokenStore = new CookieTokenStore();
+        var databaseTokenStore = new DatabaseTokenStore(database);
+        TokenStore tokenStore = databaseTokenStore;
         var tokenController = new TokenController(tokenStore);
+
 
         var rateLimiter = RateLimiter.create(2.0d);
         Spark.staticFiles.location("/public");
@@ -95,6 +98,9 @@ public class Main {
 
         get("/logs", auditController::readAuditLog);
         post("/users", userController::registerUser);
+
+        before("/expired_tokens", userController::requireAuthentication);
+        delete("/expired_tokens", (request, response) -> {databaseTokenStore.deleteExpiredTokens();return new JSONObject();});
 
         internalServerError(new JSONObject().put("error", "internal server error").toString());
         notFound(new JSONObject().put("error", "not found").toString());

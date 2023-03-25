@@ -40,7 +40,13 @@ CREATE TABLE permissions
     perms    VARCHAR(3)  NOT NULL,
     PRIMARY KEY (space_id, user_id)
 );
-
+CREATE TABLE tokens(
+                       token_id VARCHAR(100) PRIMARY KEY,
+                       user_id VARCHAR(30) NOT NULL REFERENCES users(user_id),
+                       expiry TIMESTAMP NOT NULL,
+                       attributes VARCHAR(4096) NOT NULL
+);
+CREATE INDEX expired_token_idx ON tokens(expiry);
 
 CREATE
 USER natter_api_user PASSWORD 'password';
@@ -52,3 +58,4 @@ GRANT DELETE ON messages TO natter_api_user;
 GRANT SELECT, INSERT ON users TO natter_api_user;
 GRANT SELECT, INSERT ON audit_log TO natter_api_user;
 GRANT SELECT, INSERT ON permissions TO natter_api_user;
+GRANT SELECT, INSERT, DELETE ON tokens TO natter_api_user;
