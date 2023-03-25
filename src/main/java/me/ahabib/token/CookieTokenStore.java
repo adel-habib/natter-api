@@ -3,7 +3,9 @@ package me.ahabib.token;
 import spark.Request;
 
 import java.util.Optional;
-
+import java.security.*;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 public class CookieTokenStore implements TokenStore {
     @Override
     public String create(Request request, Token token) {
@@ -15,17 +17,36 @@ public class CookieTokenStore implements TokenStore {
         session.attribute("username", token.username);
         session.attribute("expiry", token.expiry);
         session.attribute("attrs", token.attributes);
-        return session.id();
+        return Base64url.encode(sha256(session.id()));
     }
 
     @Override
     public Optional<Token> read(Request request, String tokenId) {
+
         var session = request.session(false);
         if (session == null) {
             return Optional.empty();
         }
+
+        var provided = Base64url.decode(tokenId);
+        var computed = sha256(session.id());
+
+        if (!MessageDigest.isEqual(computed, provided)) {
+            return Optional.empty();
+        }
+
         var token = new Token(session.attribute("expiry"), session.attribute("username"));
         token.attributes.putAll(session.attribute("attrs"));
+
         return Optional.of(token);
+    }
+
+    static byte[] sha256(String tokenId) {
+        try {
+            var sha256 = MessageDigest.getInstance("SHA-256");
+            return sha256.digest(tokenId.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }
