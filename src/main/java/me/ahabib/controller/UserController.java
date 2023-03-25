@@ -64,8 +64,7 @@ public class UserController {
 
     public void requireAuthentication(Request request, Response response) {
         if (request.attribute("subject") == null) {
-            response.header("WWW-Authenticate",
-                    "Basic realm=\"/\", charset=\"UTF-8\"");
+            response.header("WWW-Authenticate", "Basic realm=\"/\", charset=\"UTF-8\"");
             halt(401);
         }
     }
@@ -81,11 +80,7 @@ public class UserController {
             var spaceId = Long.parseLong(request.params(":spaceId"));
             var username = (String) request.attribute("subject");
 
-            var perms = database.findOptional(String.class,
-                    "SELECT perms FROM permissions " +
-                            "WHERE space_id = ? AND user_id = ?",
-                    spaceId, username).orElse("");
-
+            var perms = database.findOptional(String.class, "SELECT perms FROM permissions " +  "WHERE space_id = ? AND user_id = ?", spaceId, username).orElse("");
             if (!perms.contains(permission)) {
                 halt(403);
             }
