@@ -1,6 +1,8 @@
 package me.ahabib;
 
+import com.google.common.util.concurrent.RateLimiter;
 import me.ahabib.controller.SpaceController;
+import me.ahabib.controller.UserController;
 import org.dalesbred.Database;
 import org.h2.jdbcx.JdbcConnectionPool;
 import org.json.JSONObject;
@@ -23,9 +25,16 @@ public class Main {
         createTables(database);
         dataSource = JdbcConnectionPool.create("jdbc:h2:mem:natter", "natter_api_user", "password");
         var spaceController = new SpaceController(database);
+        var userController = new UserController(database);
+        var rateLimiter = RateLimiter.create(2.0d);
+
         exception(IllegalArgumentException.class,Main::badRequest);
         exception(EmptyStackException.class, ((e, request, response) -> {response.status(404);}) );
         before(((request, response) -> {
+            if(!rateLimiter.tryAcquire()){
+                response.header("Retry-After", "2");
+                halt(429);
+            }
             if (request.requestMethod().equals("POST") &&
                     !"application/json".equals(request.contentType())) {
                 halt(415, new JSONObject().put(
@@ -33,6 +42,8 @@ public class Main {
                 ).toString());
             }
         }));
+
+        before(userController::authenticate);
 
         afterAfter((request, response) -> {
             response.type("application/json;charset=utf-8");
@@ -45,6 +56,7 @@ public class Main {
             response.header("Server", "");
         });
 
+        post("/users", userController::registerUser);
         post("/spaces", spaceController::createSpace);
         after((request, response) -> {response.type("application/json");});
         internalServerError(new JSONObject().put("error", "internal server error").toString());
