@@ -5,9 +5,10 @@ function login(username, password) {
 
     fetch(apiUrl + '/sessions', {
         method: 'POST',
+        credentials: 'include',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': credentials
+            'Authorization': credentials,
         }
     })
         .then(res => {

@@ -12,9 +12,11 @@ import org.json.JSONObject;
 import spark.Request;
 import spark.Response;
 import spark.Spark;
+import static spark.Service.SPARK_DEFAULT_PORT;
 
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Set;
 
 import static spark.Spark.*;
 
@@ -22,6 +24,8 @@ public class Main {
 
     public static void main(String... args) throws Exception {
         secure("localhost.p12", "changeit", null, null);
+        port(args.length > 0 ? Integer.parseInt(args[0]) : SPARK_DEFAULT_PORT);
+
         var datasource = JdbcConnectionPool.create("jdbc:h2:mem:natter", "natter", "password");
         var database = Database.forDataSource(datasource);
         createTables(database);
@@ -35,7 +39,6 @@ public class Main {
         var tokenController = new TokenController(tokenStore);
 
         var rateLimiter = RateLimiter.create(2.0d);
-
         Spark.staticFiles.location("/public");
 
         before((request, response) -> {
@@ -43,6 +46,7 @@ public class Main {
                 halt(429);
             }
         });
+        before(new CorsFilter(Set.of("https://localhost:8081")));
 
         before(((request, response) -> {
             if (request.requestMethod().equals("POST") && !"application/json".equals(request.contentType())) {
