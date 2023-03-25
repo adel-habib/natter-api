@@ -1,11 +1,16 @@
 const apiUrl = 'https://localhost:4567';
 function createSpace(name, owner) {
     let data = {name: name, owner: owner};
+    let csrfToken = getCookie('csrfToken');
+
     fetch(apiUrl + '/spaces', {
         method: 'POST',
         credentials: 'include',
         body: JSON.stringify(data),
-        headers: {'Content-Type': 'application/json'}
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
+        }
     }).then(response => {
         if(response.ok){
             return response.json()
@@ -29,4 +34,13 @@ function processFormSubmit(e) {
     createSpace(spaceName, owner);
 
     return false;
+}
+function getCookie(cookieName) {
+    var cookieValue = document.cookie.split(';')
+        .map(item => item.split('=')
+            .map(x => decodeURIComponent(x.trim())))
+        .filter(item => item[0] === cookieName)[0]
+    if (cookieValue) {
+        return cookieValue[1];
+    }
 }
