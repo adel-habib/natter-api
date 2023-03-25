@@ -12,6 +12,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import spark.Request;
 import spark.Response;
+import spark.Spark;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -37,6 +38,8 @@ public class Main {
         var auditController = new AuditController(database);
 
         var rateLimiter = RateLimiter.create(2.0d);
+
+        Spark.staticFiles.location("/public");
 
         before((request, response) -> {
             if (!rateLimiter.tryAcquire()) {
