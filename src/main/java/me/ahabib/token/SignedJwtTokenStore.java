@@ -1,15 +1,13 @@
 package me.ahabib.token;
 
+import java.text.ParseException;
+import java.util.*;
+
 import com.nimbusds.jose.*;
-import com.nimbusds.jwt.JWTClaimsSet;
-import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.*;
 import spark.Request;
 
-import java.text.ParseException;
-import java.util.Date;
-import java.util.Optional;
-
-public class SignedJwtTokenStore implements TokenStore {
+public class SignedJwtTokenStore implements AuthenticatedTokenStore {
     private final JWSSigner signer;
     private final JWSVerifier verifier;
     private final JWSAlgorithm algorithm;
@@ -30,7 +28,7 @@ public class SignedJwtTokenStore implements TokenStore {
                 .expirationTime(Date.from(token.expiry))
                 .claim("attrs", token.attributes)
                 .build();
-        var header = new JWSHeader(JWSAlgorithm.HS256);
+        var header = new JWSHeader(algorithm);
         var jwt = new SignedJWT(header, claimsSet);
         try {
             jwt.sign(signer);
@@ -58,6 +56,7 @@ public class SignedJwtTokenStore implements TokenStore {
             var token = new Token(expiry, subject);
             var attrs = claims.getJSONObjectClaim("attrs");
             attrs.forEach((key, value) -> token.attributes.put(key, (String) value));
+
             return Optional.of(token);
         } catch (ParseException | JOSEException e) {
             return Optional.empty();
@@ -66,6 +65,6 @@ public class SignedJwtTokenStore implements TokenStore {
 
     @Override
     public void revoke(Request request, String tokenId) {
-// TODO
+        // TODO
     }
 }

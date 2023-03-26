@@ -2,20 +2,33 @@ package me.ahabib.token;
 
 import spark.Request;
 import javax.crypto.Mac;
-import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.util.*;
-public class HmacTokenStore implements TokenStore{
+import static java.nio.charset.StandardCharsets.UTF_8;
+
+public class HmacTokenStore implements SecureTokenStore {
+
     private final TokenStore delegate;
     private final Key macKey;
-    public HmacTokenStore(TokenStore delegate, Key macKey) {
+
+    private HmacTokenStore(TokenStore delegate, Key macKey) {
         this.delegate = delegate;
         this.macKey = macKey;
     }
+    public static SecureTokenStore wrap(ConfidentialTokenStore store,
+                                        Key macKey) {
+        return new HmacTokenStore(store, macKey);
+    }
+    public static AuthenticatedTokenStore wrap(TokenStore store,
+                                               Key macKey) {
+        return new HmacTokenStore(store, macKey);
+    }
+
     @Override
     public String create(Request request, Token token) {
         var tokenId = delegate.create(request, token);
         var tag = hmac(tokenId);
+
         return tokenId + '.' + Base64url.encode(tag);
     }
 
@@ -23,20 +36,21 @@ public class HmacTokenStore implements TokenStore{
         try {
             var mac = Mac.getInstance(macKey.getAlgorithm());
             mac.init(macKey);
-            return mac.doFinal(tokenId.getBytes(StandardCharsets.UTF_8));
+            return mac.doFinal(tokenId.getBytes(UTF_8));
         } catch (GeneralSecurityException e) {
             throw new RuntimeException(e);
         }
     }
+
     @Override
     public Optional<Token> read(Request request, String tokenId) {
         var index = tokenId.lastIndexOf('.');
-        if (index == -1) {
-            return Optional.empty();
-        }
-        var realTokenId = tokenId.substring(0, index);
+        if (index == -1) return Optional.empty();
 
-        var provided = Base64url.decode(tokenId.substring(index + 1));
+        var realTokenId = tokenId.substring(0, index);
+        var tag = tokenId.substring(index + 1);
+
+        var provided = Base64url.decode(tag);
         var computed = hmac(realTokenId);
 
         if (!MessageDigest.isEqual(provided, computed)) {
@@ -45,6 +59,7 @@ public class HmacTokenStore implements TokenStore{
 
         return delegate.read(request, realTokenId);
     }
+
     @Override
     public void revoke(Request request, String tokenId) {
         var index = tokenId.lastIndexOf('.');
@@ -57,6 +72,7 @@ public class HmacTokenStore implements TokenStore{
         if (!MessageDigest.isEqual(provided, computed)) {
             return;
         }
+
         delegate.revoke(request, realTokenId);
     }
 }

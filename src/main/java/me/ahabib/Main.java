@@ -46,11 +46,10 @@ public class Main {
         var keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
         var macKey = keyStore.getKey("hmac-key", keyPassword);
-        var algorithm = JWSAlgorithm.HS256;
-        var signer = new MACSigner((SecretKey) macKey);
-        var verifier = new MACVerifier((SecretKey) macKey);
-        TokenStore tokenStore = new SignedJwtTokenStore(signer, verifier, algorithm, "https://localhost:4567");
-        var tokenController = new TokenController(tokenStore);
+        var encKey = keyStore.getKey("aes-key", keyPassword);
+
+        var tokenWhitelist = new DatabaseTokenStore(database);
+        var tokenController = new TokenController(new EncryptedJwtTokenStore((SecretKey) encKey, tokenWhitelist));
 
 
         var rateLimiter = RateLimiter.create(2.0d);

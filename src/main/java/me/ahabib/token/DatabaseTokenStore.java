@@ -6,13 +6,16 @@ import spark.Request;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
-public class DatabaseTokenStore implements TokenStore{
+public class DatabaseTokenStore implements ConfidentialTokenStore{
     private final Database database;
     private final SecureRandom secureRandom;
     public DatabaseTokenStore(Database database) {
         this.database = database;
         this.secureRandom = new SecureRandom();
+        Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(this::deleteExpiredTokens, 10, 10, TimeUnit.MINUTES);
     }
     private String randomId() {
         var bytes = new byte[20];
