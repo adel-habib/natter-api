@@ -2,10 +2,7 @@ package me.ahabib;
 
 import com.google.common.util.concurrent.RateLimiter;
 import me.ahabib.controller.*;
-import me.ahabib.token.CookieTokenStore;
-import me.ahabib.token.DatabaseTokenStore;
-import me.ahabib.token.HmacTokenStore;
-import me.ahabib.token.TokenStore;
+import me.ahabib.token.*;
 import org.dalesbred.Database;
 import org.dalesbred.result.EmptyResultException;
 import org.h2.jdbcx.JdbcConnectionPool;
@@ -43,8 +40,8 @@ public class Main {
         var keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
         var macKey = keyStore.getKey("hmac-key", keyPassword);
-        var databaseTokenStore = new DatabaseTokenStore(database);
-        var tokenStore = new HmacTokenStore(databaseTokenStore, macKey);
+        TokenStore tokenStore = new JsonTokenStore();
+        tokenStore = new HmacTokenStore(tokenStore, macKey);
         var tokenController = new TokenController(tokenStore);
 
 
@@ -107,7 +104,7 @@ public class Main {
         post("/users", userController::registerUser);
 
         before("/expired_tokens", userController::requireAuthentication);
-        delete("/expired_tokens", (request, response) -> {databaseTokenStore.deleteExpiredTokens();return new JSONObject();});
+        //delete("/expired_tokens", (request, response) -> {databaseTokenStore.deleteExpiredTokens();return new JSONObject();});
 
         internalServerError(new JSONObject().put("error", "internal server error").toString());
         notFound(new JSONObject().put("error", "not found").toString());
