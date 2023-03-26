@@ -1,4 +1,5 @@
 package me.ahabib.token;
+
 import spark.Request;
 import javax.crypto.Mac;
 import java.nio.charset.StandardCharsets;

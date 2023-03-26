@@ -1,6 +1,9 @@
 package me.ahabib;
 
 import com.google.common.util.concurrent.RateLimiter;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jose.crypto.MACVerifier;
 import me.ahabib.controller.*;
 import me.ahabib.token.*;
 import org.dalesbred.Database;
@@ -11,6 +14,9 @@ import org.json.JSONObject;
 import spark.Request;
 import spark.Response;
 import spark.Spark;
+
+import javax.crypto.SecretKey;
+
 import static spark.Service.SPARK_DEFAULT_PORT;
 
 import java.io.FileInputStream;
@@ -40,8 +46,10 @@ public class Main {
         var keyStore = KeyStore.getInstance("PKCS12");
         keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
         var macKey = keyStore.getKey("hmac-key", keyPassword);
-        TokenStore tokenStore = new JsonTokenStore();
-        tokenStore = new HmacTokenStore(tokenStore, macKey);
+        var algorithm = JWSAlgorithm.HS256;
+        var signer = new MACSigner((SecretKey) macKey);
+        var verifier = new MACVerifier((SecretKey) macKey);
+        TokenStore tokenStore = new SignedJwtTokenStore(signer, verifier, algorithm, "https://localhost:4567");
         var tokenController = new TokenController(tokenStore);
 
 
