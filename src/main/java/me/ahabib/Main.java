@@ -4,6 +4,7 @@ import com.google.common.util.concurrent.RateLimiter;
 import me.ahabib.controller.*;
 import me.ahabib.token.CookieTokenStore;
 import me.ahabib.token.DatabaseTokenStore;
+import me.ahabib.token.HmacTokenStore;
 import me.ahabib.token.TokenStore;
 import org.dalesbred.Database;
 import org.dalesbred.result.EmptyResultException;
@@ -15,8 +16,10 @@ import spark.Response;
 import spark.Spark;
 import static spark.Service.SPARK_DEFAULT_PORT;
 
+import java.io.FileInputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.KeyStore;
 import java.util.Set;
 
 import static spark.Spark.*;
@@ -36,8 +39,12 @@ public class Main {
         var spaceController = new SpaceController(database);
         var userController = new UserController(database);
         var auditController = new AuditController(database);
+        var keyPassword = System.getProperty("keystore.password", "changeit").toCharArray();
+        var keyStore = KeyStore.getInstance("PKCS12");
+        keyStore.load(new FileInputStream("keystore.p12"), keyPassword);
+        var macKey = keyStore.getKey("hmac-key", keyPassword);
         var databaseTokenStore = new DatabaseTokenStore(database);
-        TokenStore tokenStore = databaseTokenStore;
+        var tokenStore = new HmacTokenStore(databaseTokenStore, macKey);
         var tokenController = new TokenController(tokenStore);
 
 
